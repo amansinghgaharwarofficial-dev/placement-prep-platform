@@ -4,9 +4,12 @@ import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
-
+import java.util.Optional;
+import com.example.demo.dto.ApiResponse;
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -28,20 +31,30 @@ public class UserController {
     }
 
     // LOGIN → check email + password
-    @PostMapping("/login")
-    public String login(@RequestBody User loginUser) {
+   @PostMapping("/login")
+    public ResponseEntity<ApiResponse> login(@RequestBody User loginUser) {
 
-        User user = userRepository.findByEmail(loginUser.getEmail())
-                  .orElse(null);
-
-        if (user == null) {
-            return "USER NOT FOUND";
+        if (loginUser.getEmail() == null || loginUser.getPassword() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                 .body(new ApiResponse("Email and password are required", 400));
         }
 
+        Optional<User> optionalUser = userRepository.findByEmail(loginUser.getEmail());
+
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                  .body(new ApiResponse("Invalid email or password", 401));
+        }
+
+        User user = optionalUser.get();
+
         if (passwordEncoder.matches(loginUser.getPassword(), user.getPassword())) {
-            return "LOGIN SUCCESS";
+            return ResponseEntity.ok(
+                    new ApiResponse("Login successful", 200)
+            );
         } else {
-            return "INVALID PASSWORD";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse("Invalid email or password", 401));
         }
     }
 
